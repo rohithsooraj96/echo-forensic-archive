@@ -18,7 +18,7 @@ export function Landing({ story, householdRange, onBegin }: LandingProps) {
         <h1>ECHO<span className="h1-dot">.</span></h1>
         <p className="landing-subtitle">THREE WORLDS. THOUSANDS OF TRACES. <em>HIDDEN PATTERNS.</em></p>
         <p className="landing-description">Explore the traces. Find the repetitions. Follow the connections.</p>
-        <ActionButton variant="primary" className="begin-button" onClick={begin}><span>BEGIN INVESTIGATION</span><ArrowUpRight size={18} /></ActionButton>
+        <ActionButton variant="primary" className="begin-button" data-testid="begin-investigation" onClick={begin}><span>BEGIN INVESTIGATION</span><ArrowUpRight size={18} /></ActionButton>
         <div className="shortcut-line"><span><kbd>1</kbd> LISTENING</span><span><kbd>2</kbd> SPENDING</span><span><kbd>3</kbd> TRANSACTIONS</span><span><kbd>SPACE</kbd> SCAN</span></div>
       </div>
       <div className="archive-counter-grid" aria-label="Dataset counters">

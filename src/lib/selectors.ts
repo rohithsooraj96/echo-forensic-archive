@@ -18,9 +18,7 @@ export function visibleTraceCount(data: ArchiveData, filters: FilterState, entro
     return data.story.spotify.rows
   }
   if (filters.dataset === 'household' || filters.type !== 'all' || filters.category !== 'all') {
-    if (filters.type !== 'all') {
-      return filters.type === 'Expense' ? 2176 : filters.type === 'Income' ? 125 : 160
-    }
+    if (filters.type !== 'all') return filters.type === 'Expense' ? 2176 : filters.type === 'Income' ? 125 : 160
     if (filters.category !== 'all') return data.householdCategories.find((item) => item.category === filters.category)?.events ?? 0
     return data.story.household.rows
   }
@@ -46,17 +44,44 @@ export function filteredHouseholdCategories(data: ArchiveData, filters: FilterSt
 }
 
 export function filteredIndiaPatterns(data: ArchiveData, filters: FilterState, entropy: number) {
-  const score = entropy * 1
-  return data.indiaDuplicates.groups.filter((group) => !filters.duplicateOnly || group.extras > 0).filter((group) => group.anomalyScore >= score).slice(0, 12)
+  return data.indiaDuplicates.groups.filter((group) => !filters.duplicateOnly || group.extras > 0).filter((group) => group.anomalyScore >= entropy).slice(0, 12)
 }
 
-export function matchedEntities(data: ArchiveData, query: string) {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return [] as { label: string; detail: string; dataset: string }[]
+function normalize(value: string) {
+  return value.toLocaleLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function fuzzyMatch(candidate: string, query: string) {
+  const text = normalize(candidate)
+  return normalize(query).split(' ').filter(Boolean).every((term) => text.includes(term) || [...term].reduce((position, character) => {
+    if (position < 0) return -1
+    const next = text.indexOf(character, position)
+    return next < 0 ? -1 : next + 1
+  }, 0) >= 0)
+}
+
+type SearchEntity = { label: string; detail: string; dataset: string; action?: string }
+
+export function matchedEntities(data: ArchiveData, query: string): SearchEntity[] {
+  const needle = query.trim()
+  if (!needle) return []
+  const transactionTypes = [
+    { label: 'Expense records', detail: '2,176 household expense records', dataset: 'SPENDING', action: 'spending' },
+    { label: 'Income records', detail: '125 household income records', dataset: 'SPENDING', action: 'spending' },
+    { label: 'Transfer-out records', detail: '160 household transfer-out records', dataset: 'SPENDING', action: 'spending' },
+  ]
+  const sourceTimes = [
+    { label: 'Spotify UTC timestamps', detail: 'source time is UTC', dataset: 'LISTENING', action: 'listening' },
+    { label: 'Household unspecified local time', detail: 'source timezone is not stated', dataset: 'SPENDING', action: 'spending' },
+    { label: 'India timestamps without timezone', detail: 'source timezone is not stated', dataset: 'TRANSACTIONS', action: 'transactions' },
+  ]
   return [
-    ...data.spotifyArtists.filter((item) => item.label.toLowerCase().includes(needle)).slice(0, 4).map((item) => ({ label: item.label, detail: `${formatNumber(item.value)} listening traces`, dataset: 'LISTENING' })),
-    ...data.spotifyTracks.filter((item) => `${item.track} ${item.artist}`.toLowerCase().includes(needle)).slice(0, 4).map((item) => ({ label: item.track, detail: `${item.artist} · ${item.value} repeats`, dataset: 'LISTENING' })),
-    ...data.householdCategories.filter((item) => item.category.toLowerCase().includes(needle)).slice(0, 4).map((item) => ({ label: item.category, detail: `${item.events} ledger records`, dataset: 'SPENDING' })),
-    ...data.indiaGeo.merchants.filter((item) => item.label.toLowerCase().includes(needle)).slice(0, 4).map((item) => ({ label: item.label, detail: `${item.value} transaction traces`, dataset: 'TRANSACTIONS' })),
+    ...transactionTypes.filter((item) => fuzzyMatch(`${item.label} ${item.detail}`, needle)),
+    ...sourceTimes.filter((item) => fuzzyMatch(`${item.label} ${item.detail}`, needle)),
+    ...data.spotifyArtists.filter((item) => fuzzyMatch(item.label, needle)).slice(0, 4).map((item) => ({ label: item.label, detail: `${formatNumber(item.value)} listening traces`, dataset: 'LISTENING', action: 'listening' })),
+    ...data.spotifyTracks.filter((item) => fuzzyMatch(`${item.track} ${item.artist}`, needle)).slice(0, 4).map((item) => ({ label: item.track, detail: `${item.artist} · ${item.value} repeats`, dataset: 'LISTENING', action: 'listening' })),
+    ...data.householdCategories.filter((item) => fuzzyMatch(item.category, needle)).slice(0, 4).map((item) => ({ label: item.category, detail: `${item.events} ledger records`, dataset: 'SPENDING', action: 'spending' })),
+    ...data.indiaCategories.filter((item) => fuzzyMatch(item.label, needle)).slice(0, 4).map((item) => ({ label: item.label, detail: `${item.value} transaction traces`, dataset: 'TRANSACTIONS', action: 'transactions' })),
+    ...data.indiaGeo.merchants.filter((item) => fuzzyMatch(item.label, needle)).slice(0, 4).map((item) => ({ label: item.label, detail: `${item.value} transaction traces`, dataset: 'TRANSACTIONS', action: 'transactions' })),
   ]
 }

@@ -1,8 +1,10 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn'
 
-export function Panel({ children, className = '', as: Tag = 'section' }: { children: ReactNode; className?: string; as?: 'section' | 'div' | 'article' }) {
-  return <Tag className={cn('glass-panel', className)}>{children}</Tag>
+type PanelProps = HTMLAttributes<HTMLElement> & { children: ReactNode; as?: 'section' | 'div' | 'article' }
+
+export function Panel({ children, className = '', as: Tag = 'section', ...props }: PanelProps) {
+  return <Tag {...props} className={cn('glass-panel', className)}>{children}</Tag>
 }
 
 export function Eyebrow({ children, tone = 'cyan' }: { children: ReactNode; tone?: 'cyan' | 'amber' | 'coral' | 'muted' }) {

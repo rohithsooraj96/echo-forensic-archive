@@ -1,19 +1,21 @@
 import { useEffect, useRef } from 'react'
+import { useResizeObserver } from '../hooks/useResizeObserver'
 
 export function AtmosphereCanvas() {
-  const ref = useRef<HTMLCanvasElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { ref, size } = useResizeObserver<HTMLCanvasElement>()
   useEffect(() => {
-    const canvas = ref.current
+    const canvas = canvasRef.current
     if (!canvas) return
     const context = canvas.getContext('2d')
     if (!context) return
     let frame = 0
     let animation = 0
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const width = Math.max(1, size.width || window.innerWidth)
+    const height = Math.max(1, size.height || window.innerHeight)
     const draw = (time: number) => {
       const ratio = Math.min(window.devicePixelRatio || 1, 1.5)
-      const width = window.innerWidth
-      const height = window.innerHeight
       if (canvas.width !== width * ratio || canvas.height !== height * ratio) { canvas.width = width * ratio; canvas.height = height * ratio; canvas.style.width = `${width}px`; canvas.style.height = `${height}px`; context.setTransform(ratio, 0, 0, ratio, 0, 0) }
       context.clearRect(0, 0, width, height)
       const pulse = reduce ? 0 : Math.sin(time / 5000) * 0.08
@@ -30,6 +32,6 @@ export function AtmosphereCanvas() {
     }
     draw(0)
     return () => cancelAnimationFrame(animation)
-  }, [])
-  return <canvas className="atmosphere-canvas" ref={ref} aria-hidden="true" />
+  }, [size.height, size.width])
+  return <canvas className="atmosphere-canvas" ref={(node) => { canvasRef.current = node; ref(node) }} aria-hidden="true" />
 }
